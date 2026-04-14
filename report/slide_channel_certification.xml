@@ -2,10 +2,20 @@
 <odoo>
 
     <!--
-        STANDALONE SHAFA CERTIFICATE TEMPLATE
+        REDIRECT: point survey.certification_report_view at our template.
 
-        This template replaces survey.certification_report_view via
-        post_init_hook (see __init__.py).
+        Because 'survey' is in our depends, this XML ID is guaranteed to
+        exist when this file is loaded. Odoo applies this record update on
+        BOTH install and upgrade, so no Python post_init_hook is needed.
+        The uninstall_hook in __init__.py restores the original value
+        ('survey.certification_report') when the module is removed.
+    -->
+    <record id="survey.certification_report_view" model="ir.actions.report">
+        <field name="report_name">shafa_elearning_certificate.report_slide_channel_certification</field>
+    </record>
+
+    <!--
+        STANDALONE SHAFA CERTIFICATE TEMPLATE
 
         The survey certification report iterates over survey.user_input
         records. Key fields available on each record (aliased as `input`):
