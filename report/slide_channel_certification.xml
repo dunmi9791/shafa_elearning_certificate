@@ -27,6 +27,18 @@
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="input">
 
+                    <!--
+                        Odoo's report engine requires a div.article with
+                        data-oe-model and data-oe-id to save PDF attachments
+                        per record and to correctly split multi-record PDFs.
+                        We reset all of Odoo's default article styling so it
+                        doesn't interfere with our certificate layout.
+                    -->
+                    <div class="article"
+                         t-att-data-oe-model="input._name"
+                         t-att-data-oe-id="input.id"
+                         style="padding:0;margin:0;border:none;">
+
                     <div class="shafa-cert-wrapper">
 
                         <!-- ============================================
@@ -37,6 +49,14 @@
                         <style type="text/css">
 
                             * { box-sizing: border-box; margin: 0; padding: 0; }
+
+                            /* Reset Odoo's default article div styling */
+                            div.article {
+                                padding: 0 !important;
+                                margin: 0 !important;
+                                border: none !important;
+                                display: block;
+                            }
 
                             @page {
                                 size: 297mm 210mm;
@@ -338,6 +358,7 @@
                         </div><!-- /cert-side -->
 
                     </div><!-- /shafa-cert-wrapper -->
+                    </div><!-- /article -->
 
                 </t><!-- /t-foreach -->
             </t><!-- /web.html_container -->
