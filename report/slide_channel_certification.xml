@@ -181,18 +181,6 @@
                                 height: 68px;
                             }
 
-                            /* ================================================================
-                               WATERMARK — absolutely inside the left cell
-                               Circles are small (r=45 in a 760-wide viewBox ≈ 18mm radius)
-                               and very light.
-                            ================================================================ */
-                            .cert-watermark-wrap {
-                                position: absolute;
-                                top: 0; left: 0;
-                                width: 100%; height: 100%;
-                                overflow: hidden;
-                                pointer-events: none;
-                            }
 
                         </style>
 
@@ -203,21 +191,6 @@
                                      LEFT PANEL
                                 ============================================================ -->
                                 <div class="cert-main">
-
-                                    <!-- Watermark circles inside the left cell -->
-                                    <div class="cert-watermark-wrap">
-                                        <svg xmlns="http://www.w3.org/2000/svg"
-                                             width="100%" height="100%"
-                                             viewBox="0 0 760 560"
-                                             preserveAspectRatio="xMidYMid slice">
-                                            <circle cx="80"  cy="80"  r="45" fill="none" stroke="#ccc" stroke-width="12" opacity="0.45"/>
-                                            <circle cx="310" cy="175" r="38" fill="none" stroke="#ccc" stroke-width="12" opacity="0.35"/>
-                                            <circle cx="490" cy="70"  r="32" fill="none" stroke="#ccc" stroke-width="12" opacity="0.35"/>
-                                            <circle cx="70"  cy="390" r="40" fill="none" stroke="#ccc" stroke-width="12" opacity="0.35"/>
-                                            <circle cx="300" cy="460" r="30" fill="none" stroke="#ccc" stroke-width="12" opacity="0.30"/>
-                                            <circle cx="470" cy="390" r="26" fill="none" stroke="#ccc" stroke-width="10" opacity="0.28"/>
-                                        </svg>
-                                    </div>
 
                                     <!-- Logo -->
                                     <t t-if="res_company.logo">
