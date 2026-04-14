@@ -15,7 +15,6 @@
     'data': [
         'report/slide_channel_certification.xml',
     ],
-    'uninstall_hook': 'uninstall_hook',
     'installable': True,
     'auto_install': False,
     'license': 'LGPL-3',

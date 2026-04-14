@@ -2,368 +2,347 @@
 <odoo>
 
     <!--
-        REDIRECT: point survey.certification_report_view at our template.
+        survey.certification_report_view is confirmed as an ir.ui.view
+        (QWeb template), so we simply inherit it and replace its entire
+        content. Odoo applies this on both install and upgrade, and
+        automatically removes it on uninstall — no Python hooks needed.
 
-        Because 'survey' is in our depends, this XML ID is guaranteed to
-        exist when this file is loaded. Odoo applies this record update on
-        BOTH install and upgrade, so no Python post_init_hook is needed.
-        The uninstall_hook in __init__.py restores the original value
-        ('survey.certification_report') when the module is removed.
-    -->
-    <record id="survey.certification_report_view" model="ir.actions.report">
-        <field name="report_name">shafa_elearning_certificate.report_slide_channel_certification</field>
-    </record>
-
-    <!--
-        STANDALONE SHAFA CERTIFICATE TEMPLATE
-
-        The survey certification report iterates over survey.user_input
-        records. Key fields available on each record (aliased as `input`):
-
-            input.partner_id.name       — student / participant name
-            input.survey_id.title       — survey / certification title
-            input.create_date           — datetime of completion
-            input.score_percentage      — numeric score (e.g. 85.0)
-            input.scoring_success       — True if passed
-
-        Standard report globals also available:
-            res_company, user, time, web_base_url
+        Template variables (provided by Odoo's survey report model):
+            docs            — recordset of survey.user_input
+            input           — current survey.user_input (via t-foreach)
+            input.partner_id.name     — student name
+            input.survey_id.title     — certification / course title
+            input.create_date         — completion datetime
+            res_company, user, time   — standard report globals
     -->
 
-    <template id="report_slide_channel_certification">
-        <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="input">
+    <template id="report_shafa_certificate"
+              inherit_id="survey.certification_report_view">
 
-                <div class="shafa-cert-wrapper">
+        <!-- Replace the entire template content.
+             The survey PDF template wraps everything in web.html_container,
+             so this XPath reliably targets the outermost element. -->
+        <xpath expr="//t[@t-call='web.html_container']" position="replace">
 
-                    <!-- ================================================
-                         CSS — inlined so wkhtmltopdf picks it up reliably.
-                         @page uses explicit mm dimensions to force landscape
-                         without needing a paperformat database record.
-                    ================================================ -->
-                    <style type="text/css">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="input">
 
-                        * {
-                            box-sizing: border-box;
-                            margin: 0;
-                            padding: 0;
-                        }
+                    <div class="shafa-cert-wrapper">
 
-                        @page {
-                            size: 297mm 210mm;
-                            margin: 0mm;
-                        }
+                        <!-- ============================================
+                             CSS — inlined for reliable wkhtmltopdf pickup.
+                             @page with explicit mm dimensions forces
+                             landscape without a paperformat DB record.
+                        ============================================ -->
+                        <style type="text/css">
 
-                        body {
-                            margin: 0;
-                            padding: 0;
-                            background: white;
-                        }
+                            * { box-sizing: border-box; margin: 0; padding: 0; }
 
-                        /* ---- Outer certificate frame ---- */
-                        .shafa-cert-wrapper {
-                            width: 297mm;
-                            height: 210mm;
-                            display: -webkit-box;
-                            display: flex;
-                            -webkit-box-orient: horizontal;
-                            flex-direction: row;
-                            font-family: Arial, Helvetica, sans-serif;
-                            position: relative;
-                            overflow: hidden;
-                            background: #ffffff;
-                            border: 1.5px solid #d5d5d5;
-                        }
+                            @page {
+                                size: 297mm 210mm;
+                                margin: 0mm;
+                            }
 
-                        /* ---- Watermark SVG (absolutely positioned behind content) ---- */
-                        .cert-watermarks {
-                            position: absolute;
-                            top: 0;
-                            left: 0;
-                            width: 100%;
-                            height: 100%;
-                            z-index: 0;
-                        }
+                            body { margin: 0; padding: 0; background: white; }
 
-                        /* ---- Main left content panel ---- */
-                        .cert-main {
-                            -webkit-box-flex: 1;
-                            flex: 1;
-                            padding: 18mm 14mm 12mm 18mm;
-                            position: relative;
-                            z-index: 1;
-                            display: -webkit-box;
-                            display: flex;
-                            -webkit-box-orient: vertical;
-                            flex-direction: column;
-                            -webkit-box-pack: justify;
-                            justify-content: space-between;
-                        }
+                            /* ---- Outer certificate frame ---- */
+                            .shafa-cert-wrapper {
+                                width: 297mm;
+                                height: 210mm;
+                                display: -webkit-box;
+                                display: flex;
+                                -webkit-box-orient: horizontal;
+                                flex-direction: row;
+                                font-family: Arial, Helvetica, sans-serif;
+                                position: relative;
+                                overflow: hidden;
+                                background: #ffffff;
+                                border: 1.5px solid #d5d5d5;
+                            }
 
-                        .cert-top {
-                            display: -webkit-box;
-                            display: flex;
-                            -webkit-box-orient: vertical;
-                            flex-direction: column;
-                        }
+                            /* ---- Watermark SVG (behind all content) ---- */
+                            .cert-watermarks {
+                                position: absolute;
+                                top: 0; left: 0;
+                                width: 100%; height: 100%;
+                                z-index: 0;
+                            }
 
-                        /* Company logo */
-                        .cert-logo {
-                            height: 50px;
-                            max-width: 160px;
-                            object-fit: contain;
-                            display: block;
-                            margin-bottom: 10px;
-                        }
+                            /* ---- Main left panel ---- */
+                            .cert-main {
+                                -webkit-box-flex: 1;
+                                flex: 1;
+                                padding: 18mm 14mm 12mm 18mm;
+                                position: relative;
+                                z-index: 1;
+                                display: -webkit-box;
+                                display: flex;
+                                -webkit-box-orient: vertical;
+                                flex-direction: column;
+                                -webkit-box-pack: justify;
+                                justify-content: space-between;
+                            }
 
-                        /* "A.Y.M Shafa eLearning" */
-                        .cert-platform {
-                            font-size: 21pt;
-                            font-weight: 300;
-                            color: #222;
-                            letter-spacing: -0.2px;
-                            margin-bottom: 5px;
-                            line-height: 1.2;
-                        }
+                            .cert-top {
+                                display: -webkit-box;
+                                display: flex;
+                                -webkit-box-orient: vertical;
+                                flex-direction: column;
+                            }
 
-                        /* Completion date */
-                        .cert-date {
-                            font-size: 10pt;
-                            color: #555;
-                            margin-bottom: 16px;
-                        }
+                            /* Company logo */
+                            .cert-logo {
+                                height: 50px;
+                                max-width: 160px;
+                                object-fit: contain;
+                                display: block;
+                                margin-bottom: 10px;
+                            }
 
-                        /* Student name — most prominent text */
-                        .cert-student {
-                            font-size: 27pt;
-                            font-weight: 700;
-                            color: #1a1a1a;
-                            margin-bottom: 6px;
-                            line-height: 1.1;
-                        }
+                            /* Platform / brand name */
+                            .cert-platform {
+                                font-size: 21pt;
+                                font-weight: 300;
+                                color: #222;
+                                letter-spacing: -0.2px;
+                                margin-bottom: 5px;
+                                line-height: 1.2;
+                            }
 
-                        /* "has successfully completed" */
-                        .cert-completed {
-                            font-size: 10.5pt;
-                            color: #555;
-                            margin-bottom: 6px;
-                        }
+                            /* Completion date */
+                            .cert-date {
+                                font-size: 10pt;
+                                color: #555;
+                                margin-bottom: 16px;
+                            }
 
-                        /* Certification / course name */
-                        .cert-course {
-                            font-size: 15pt;
-                            font-weight: 700;
-                            color: #1a1a1a;
-                            margin-bottom: 4px;
-                        }
+                            /* Student name — most prominent text */
+                            .cert-student {
+                                font-size: 27pt;
+                                font-weight: 700;
+                                color: #1a1a1a;
+                                margin-bottom: 6px;
+                                line-height: 1.1;
+                            }
 
-                        /* "an online course authorised by..." */
-                        .cert-authorised {
-                            font-size: 10pt;
-                            color: #555;
-                        }
+                            /* "has successfully completed" */
+                            .cert-completed {
+                                font-size: 10.5pt;
+                                color: #555;
+                                margin-bottom: 6px;
+                            }
 
-                        /* ---- Signature block (stays at bottom) ---- */
-                        .cert-sig {
-                            padding-top: 8px;
-                        }
+                            /* Certification / course title */
+                            .cert-course {
+                                font-size: 15pt;
+                                font-weight: 700;
+                                color: #1a1a1a;
+                                margin-bottom: 4px;
+                            }
 
-                        .cert-sig-line {
-                            width: 88px;
-                            height: 0;
-                            border-bottom: 1.2px solid #888;
-                            margin-bottom: 5px;
-                        }
+                            /* "an online course authorised by..." */
+                            .cert-authorised {
+                                font-size: 10pt;
+                                color: #555;
+                            }
 
-                        /* Italic serif emulates a handwritten signature */
-                        .cert-sig-name {
-                            font-size: 13pt;
-                            font-style: italic;
-                            font-family: Georgia, 'Times New Roman', serif;
-                            font-weight: 600;
-                            color: #2a2a2a;
-                            letter-spacing: 0.4px;
-                            margin-bottom: 1px;
-                        }
+                            /* ---- Signature block ---- */
+                            .cert-sig { padding-top: 8px; }
 
-                        .cert-sig-role {
-                            font-size: 9pt;
-                            color: #333;
-                            line-height: 1.55;
-                        }
+                            .cert-sig-line {
+                                width: 88px; height: 0;
+                                border-bottom: 1.2px solid #888;
+                                margin-bottom: 5px;
+                            }
 
-                        /* ---- Right grey panel ---- */
-                        .cert-side {
-                            width: 58mm;
-                            background-color: #ebebeb;
-                            display: -webkit-box;
-                            display: flex;
-                            -webkit-box-orient: vertical;
-                            flex-direction: column;
-                            -webkit-box-align: center;
-                            align-items: center;
-                            -webkit-box-pack: justify;
-                            justify-content: space-between;
-                            padding: 14mm 7mm;
-                            position: relative;
-                            z-index: 1;
-                            flex-shrink: 0;
-                        }
+                            /* Italic serif emulates a handwritten signature */
+                            .cert-sig-name {
+                                font-size: 13pt;
+                                font-style: italic;
+                                font-family: Georgia, 'Times New Roman', serif;
+                                font-weight: 600;
+                                color: #2a2a2a;
+                                letter-spacing: 0.4px;
+                                margin-bottom: 1px;
+                            }
 
-                        /* "VERIFIED CERTIFICATE" label */
-                        .cert-badge {
-                            text-align: center;
-                            font-size: 13pt;
-                            font-weight: 400;
-                            letter-spacing: 1.5px;
-                            color: #2a2a2a;
-                            text-transform: uppercase;
-                            line-height: 1.55;
-                        }
+                            .cert-sig-role {
+                                font-size: 9pt;
+                                color: #333;
+                                line-height: 1.55;
+                            }
 
-                        /* Shafa mandala emblem */
-                        .cert-emblem {
-                            width: 74px;
-                            height: 74px;
-                        }
+                            /* ---- Right grey panel ---- */
+                            .cert-side {
+                                width: 58mm;
+                                background-color: #ebebeb;
+                                display: -webkit-box;
+                                display: flex;
+                                -webkit-box-orient: vertical;
+                                flex-direction: column;
+                                -webkit-box-align: center;
+                                align-items: center;
+                                -webkit-box-pack: justify;
+                                justify-content: space-between;
+                                padding: 14mm 7mm;
+                                position: relative;
+                                z-index: 1;
+                                flex-shrink: 0;
+                            }
 
-                    </style>
+                            /* "VERIFIED CERTIFICATE" label */
+                            .cert-badge {
+                                text-align: center;
+                                font-size: 13pt;
+                                font-weight: 400;
+                                letter-spacing: 1.5px;
+                                color: #2a2a2a;
+                                text-transform: uppercase;
+                                line-height: 1.55;
+                            }
 
-                    <!-- ================================================
-                         WATERMARK CIRCLES
-                         Hollow, low-opacity circles form the background
-                         texture matching the original certificate design.
-                    ================================================ -->
-                    <svg class="cert-watermarks"
-                         xmlns="http://www.w3.org/2000/svg"
-                         viewBox="0 0 1122 794"
-                         preserveAspectRatio="xMidYMid slice">
-                        <circle cx="185"  cy="185"  r="110" fill="none" stroke="#bbb" stroke-width="28" opacity="0.32"/>
-                        <circle cx="530"  cy="310"  r="95"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.27"/>
-                        <circle cx="760"  cy="140"  r="85"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.27"/>
-                        <circle cx="170"  cy="615"  r="98"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.27"/>
-                        <circle cx="490"  cy="685"  r="75"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.22"/>
-                        <circle cx="710"  cy="595"  r="65"  fill="none" stroke="#bbb" stroke-width="24" opacity="0.22"/>
-                    </svg>
+                            /* Shafa mandala emblem sizing */
+                            .cert-emblem { width: 74px; height: 74px; }
 
-                    <!-- ================================================
-                         MAIN LEFT PANEL
-                    ================================================ -->
-                    <div class="cert-main">
-                        <div class="cert-top">
+                        </style>
 
-                            <!-- Company logo from Odoo company settings -->
-                            <t t-if="res_company.logo">
-                                <img class="cert-logo"
-                                     t-att-src="'/web/image/res.company/%d/logo' % res_company.id"
-                                     alt="Logo"/>
-                            </t>
-
-                            <!-- Platform / brand name -->
-                            <div class="cert-platform">A.Y.M Shafa eLearning</div>
-
-                            <!-- Completion date -->
-                            <div class="cert-date">
-                                <t t-if="input.create_date">
-                                    <t t-esc="input.create_date.strftime('%d/%m/%Y')"/>
-                                </t>
-                                <t t-else="">
-                                    <t t-esc="time.strftime('%d/%m/%Y')"/>
-                                </t>
-                            </div>
-
-                            <!-- Student / participant name -->
-                            <div class="cert-student">
-                                <t t-if="input.partner_id">
-                                    <t t-esc="input.partner_id.name"/>
-                                </t>
-                                <t t-else="">
-                                    <t t-esc="user.partner_id.name"/>
-                                </t>
-                            </div>
-
-                            <div class="cert-completed">has successfully completed</div>
-
-                            <!-- Certification / survey title -->
-                            <div class="cert-course">
-                                <t t-esc="input.survey_id.title"/>
-                            </div>
-
-                            <div class="cert-authorised">
-                                an online course authorised by A.Y.M Shafa Limited
-                            </div>
-
-                        </div>
-
-                        <!-- Signature block pinned to the bottom of the left panel -->
-                        <div class="cert-sig">
-                            <div class="cert-sig-line"/>
-                            <div class="cert-sig-name">Ali Ibrahim</div>
-                            <div class="cert-sig-role">MD/COO</div>
-                            <div class="cert-sig-role">AYM Shafa Limited</div>
-                        </div>
-
-                    </div><!-- /cert-main -->
-
-                    <!-- ================================================
-                         RIGHT GREY PANEL
-                    ================================================ -->
-                    <div class="cert-side">
-
-                        <div class="cert-badge">
-                            VERIFIED<br/>CERTIFICATE
-                        </div>
-
-                        <!--
-                            Shafa mandala / flower emblem.
-                            12 outer petals (orange #E85520) + 12 inner petals
-                            (deep red #C43A0F, offset 15°) + hollow grey centre.
-                        -->
-                        <svg class="cert-emblem"
+                        <!-- ============================================
+                             WATERMARK CIRCLES
+                             Low-opacity hollow circles reproduce the
+                             background texture from the original design.
+                        ============================================ -->
+                        <svg class="cert-watermarks"
                              xmlns="http://www.w3.org/2000/svg"
-                             viewBox="0 0 100 100">
-                            <g transform="translate(50,50)">
-
-                                <!-- Outer petals -->
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(0)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(30)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(60)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(90)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(120)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(150)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(180)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(210)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(240)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(270)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(300)"/>
-                                <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(330)"/>
-
-                                <!-- Inner petals (rotated 15° relative to outer) -->
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(15)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(45)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(75)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(105)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(135)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(165)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(195)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(225)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(255)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(285)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(315)"/>
-                                <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(345)"/>
-
-                                <!-- Hollow centre matching the panel background -->
-                                <circle r="9" fill="#ebebeb"/>
-
-                            </g>
+                             viewBox="0 0 1122 794"
+                             preserveAspectRatio="xMidYMid slice">
+                            <circle cx="185"  cy="185"  r="110" fill="none" stroke="#bbb" stroke-width="28" opacity="0.32"/>
+                            <circle cx="530"  cy="310"  r="95"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.27"/>
+                            <circle cx="760"  cy="140"  r="85"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.27"/>
+                            <circle cx="170"  cy="615"  r="98"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.27"/>
+                            <circle cx="490"  cy="685"  r="75"  fill="none" stroke="#bbb" stroke-width="28" opacity="0.22"/>
+                            <circle cx="710"  cy="595"  r="65"  fill="none" stroke="#bbb" stroke-width="24" opacity="0.22"/>
                         </svg>
 
-                    </div><!-- /cert-side -->
+                        <!-- ============================================
+                             MAIN LEFT PANEL
+                        ============================================ -->
+                        <div class="cert-main">
+                            <div class="cert-top">
 
-                </div><!-- /shafa-cert-wrapper -->
+                                <!-- Company logo (pulled from Odoo company settings) -->
+                                <t t-if="res_company.logo">
+                                    <img class="cert-logo"
+                                         t-att-src="'/web/image/res.company/%d/logo' % res_company.id"
+                                         alt="Logo"/>
+                                </t>
 
-            </t><!-- /t-foreach -->
-        </t><!-- /web.html_container -->
+                                <!-- Platform name -->
+                                <div class="cert-platform">A.Y.M Shafa eLearning</div>
+
+                                <!-- Completion date -->
+                                <div class="cert-date">
+                                    <t t-if="input.create_date">
+                                        <t t-esc="input.create_date.strftime('%d/%m/%Y')"/>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-esc="time.strftime('%d/%m/%Y')"/>
+                                    </t>
+                                </div>
+
+                                <!-- Student name -->
+                                <div class="cert-student">
+                                    <t t-if="input.partner_id">
+                                        <t t-esc="input.partner_id.name"/>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-esc="user.partner_id.name"/>
+                                    </t>
+                                </div>
+
+                                <div class="cert-completed">has successfully completed</div>
+
+                                <!-- Certification / survey title -->
+                                <div class="cert-course">
+                                    <t t-esc="input.survey_id.title"/>
+                                </div>
+
+                                <div class="cert-authorised">
+                                    an online course authorised by A.Y.M Shafa Limited
+                                </div>
+
+                            </div>
+
+                            <!-- Signature block pinned to bottom of left panel -->
+                            <div class="cert-sig">
+                                <div class="cert-sig-line"/>
+                                <div class="cert-sig-name">Ali Ibrahim</div>
+                                <div class="cert-sig-role">MD/COO</div>
+                                <div class="cert-sig-role">AYM Shafa Limited</div>
+                            </div>
+
+                        </div><!-- /cert-main -->
+
+                        <!-- ============================================
+                             RIGHT GREY PANEL
+                        ============================================ -->
+                        <div class="cert-side">
+
+                            <div class="cert-badge">
+                                VERIFIED<br/>CERTIFICATE
+                            </div>
+
+                            <!--
+                                Shafa mandala emblem: 12 outer petals (orange)
+                                + 12 inner petals (deep red, offset 15°)
+                                + hollow grey centre matching the panel bg.
+                            -->
+                            <svg class="cert-emblem"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 viewBox="0 0 100 100">
+                                <g transform="translate(50,50)">
+
+                                    <!-- Outer petals -->
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(0)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(30)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(60)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(90)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(120)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(150)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(180)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(210)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(240)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(270)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(300)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(330)"/>
+
+                                    <!-- Inner petals (rotated 15° relative to outer) -->
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(15)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(45)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(75)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(105)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(135)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(165)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(195)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(225)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(255)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(285)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(315)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(345)"/>
+
+                                    <!-- Hollow centre matching the grey panel background -->
+                                    <circle r="9" fill="#ebebeb"/>
+
+                                </g>
+                            </svg>
+
+                        </div><!-- /cert-side -->
+
+                    </div><!-- /shafa-cert-wrapper -->
+
+                </t><!-- /t-foreach -->
+            </t><!-- /web.html_container -->
+
+        </xpath>
     </template>
 
 </odoo>
