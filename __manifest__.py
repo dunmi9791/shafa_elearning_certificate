@@ -11,7 +11,7 @@
     """,
     'author': 'A.Y.M Shafa Limited',
     'category': 'eLearning',
-    'depends': ['website_slides'],
+    'depends': ['website_slides', 'survey'],
     'data': [
         'report/slide_channel_certification.xml',
     ],

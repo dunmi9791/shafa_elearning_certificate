@@ -3,66 +3,62 @@ import logging
 
 _logger = logging.getLogger(__name__)
 
-SHAFA_TEMPLATE = 'shafa_elearning_certificate.report_slide_channel_certification'
-PARAM_ORIG_NAME = 'shafa_elearning_certificate.original_report_name'
-PARAM_ORIG_ID   = 'shafa_elearning_certificate.original_report_id'
+# The exact XML ID of the survey certification report action
+SURVEY_CERT_XMLID = 'survey.certification_report_view'
 
+# Our replacement template
+SHAFA_TEMPLATE    = 'shafa_elearning_certificate.report_slide_channel_certification'
 
-def _find_cert_report(env):
-    """
-    Locate the eLearning channel certification report action.
-    Searches slide.channel reports and picks the one whose
-    report_name contains 'certif' (covers all known Odoo naming variants).
-    """
-    reports = env['ir.actions.report'].search([
-        ('model', '=', 'slide.channel'),
-        ('report_type', 'in', ['qweb-pdf', 'qweb-html']),
-    ])
-    cert = reports.filtered(
-        lambda r: 'certif' in (r.report_name or '').lower()
-    )
-    return cert[:1]
+# System parameters used to persist the original value for uninstall
+PARAM_ORIG_NAME   = 'shafa_elearning_certificate.original_report_name'
+PARAM_ORIG_ID     = 'shafa_elearning_certificate.original_report_id'
 
 
 def post_init_hook(env):
     """
-    After install: redirect the existing certification report action
-    to use the Shafa custom QWeb template.
-    The original report_name is saved as a system parameter so
-    uninstall_hook can fully restore it.
+    After install: redirect survey.certification_report_view to use
+    the Shafa custom QWeb template.
+
+    We look up the report action via its known XML ID so we always
+    hit the correct record, regardless of Odoo version or local
+    module loading order.
     """
-    cert = _find_cert_report(env)
-    if not cert:
-        _logger.warning(
-            'shafa_elearning_certificate: No certification report found for '
-            'slide.channel — the Shafa template was NOT wired in automatically. '
-            'Please set the report_name manually to: %s', SHAFA_TEMPLATE
+    try:
+        cert_report = env.ref(SURVEY_CERT_XMLID)
+    except ValueError:
+        _logger.error(
+            'shafa_elearning_certificate: Could not find report action "%s". '
+            'Make sure the "survey" module is installed.',
+            SURVEY_CERT_XMLID,
         )
         return
 
-    # Persist original values so uninstall can restore them
-    env['ir.config_parameter'].sudo().set_param(PARAM_ORIG_NAME, cert.report_name)
-    env['ir.config_parameter'].sudo().set_param(PARAM_ORIG_ID,   str(cert.id))
+    # Persist original report_name so uninstall_hook can fully restore it
+    env['ir.config_parameter'].sudo().set_param(PARAM_ORIG_NAME, cert_report.report_name)
+    env['ir.config_parameter'].sudo().set_param(PARAM_ORIG_ID,   str(cert_report.id))
 
-    cert.write({'report_name': SHAFA_TEMPLATE})
+    cert_report.write({'report_name': SHAFA_TEMPLATE})
+
     _logger.info(
-        'shafa_elearning_certificate: Certificate report (id=%s) redirected '
-        'from "%s" → "%s"', cert.id, cert.report_name, SHAFA_TEMPLATE
+        'shafa_elearning_certificate: "%s" (id=%s) redirected '
+        'from "%s" → "%s".',
+        SURVEY_CERT_XMLID, cert_report.id,
+        cert_report.report_name, SHAFA_TEMPLATE,
     )
 
 
 def uninstall_hook(env):
     """
-    On uninstall: restore the certification report action to its
-    original report_name so Odoo's built-in certificate still works.
+    On uninstall: restore survey.certification_report_view to its
+    original report_name so Odoo's built-in certificate keeps working.
     """
     original_name   = env['ir.config_parameter'].sudo().get_param(PARAM_ORIG_NAME)
     original_id_str = env['ir.config_parameter'].sudo().get_param(PARAM_ORIG_ID)
 
     if not original_name or not original_id_str:
         _logger.warning(
-            'shafa_elearning_certificate: Could not restore original certificate '
-            'report — saved parameters not found.'
+            'shafa_elearning_certificate: Saved parameters not found — '
+            'cannot restore original certificate report automatically.'
         )
         return
 
@@ -71,10 +67,11 @@ def uninstall_hook(env):
         if report.exists():
             report.write({'report_name': original_name})
             _logger.info(
-                'shafa_elearning_certificate: Certificate report restored to "%s".',
-                original_name
+                'shafa_elearning_certificate: Restored report_name → "%s".',
+                original_name,
             )
     except Exception as exc:
         _logger.error(
-            'shafa_elearning_certificate: Error restoring certificate report: %s', exc
+            'shafa_elearning_certificate: Error restoring certificate report: %s',
+            exc,
         )

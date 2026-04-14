@@ -2,32 +2,34 @@
 <odoo>
 
     <!--
-        STANDALONE CERTIFICATE TEMPLATE — no inherit_id.
+        STANDALONE SHAFA CERTIFICATE TEMPLATE
 
-        The post_init_hook (in __init__.py) finds the existing
-        slide.channel certification report action by searching for it
-        and updates its report_name to point here:
-            shafa_elearning_certificate.report_slide_channel_certification
+        This template replaces survey.certification_report_view via
+        post_init_hook (see __init__.py).
 
-        Template variables available (provided by Odoo's slide module
-        report model report.slide.slide_channel_certification):
-            docs            — recordset of slide.channel
-            channel         — current slide.channel (via t-foreach)
-            partner         — res.partner who completed the course
-            completion_date — formatted date string (may be absent; we fall back)
-            res_company     — current company
-            user            — current user
-            time            — Python time module
+        The survey certification report iterates over survey.user_input
+        records. Key fields available on each record (aliased as `input`):
+
+            input.partner_id.name       — student / participant name
+            input.survey_id.title       — survey / certification title
+            input.create_date           — datetime of completion
+            input.score_percentage      — numeric score (e.g. 85.0)
+            input.scoring_success       — True if passed
+
+        Standard report globals also available:
+            res_company, user, time, web_base_url
     -->
 
     <template id="report_slide_channel_certification">
         <t t-call="web.html_container">
-            <t t-foreach="docs" t-as="channel">
+            <t t-foreach="docs" t-as="input">
 
                 <div class="shafa-cert-wrapper">
 
                     <!-- ================================================
-                         CSS — inlined so wkhtmltopdf picks it up reliably
+                         CSS — inlined so wkhtmltopdf picks it up reliably.
+                         @page uses explicit mm dimensions to force landscape
+                         without needing a paperformat database record.
                     ================================================ -->
                     <style type="text/css">
 
@@ -37,9 +39,6 @@
                             padding: 0;
                         }
 
-                        /* Page size: explicit A4 landscape dimensions.
-                           wkhtmltopdf honours @page size without needing
-                           a paperformat record. */
                         @page {
                             size: 297mm 210mm;
                             margin: 0mm;
@@ -51,7 +50,7 @@
                             background: white;
                         }
 
-                        /* ---- Certificate outer wrapper ---- */
+                        /* ---- Outer certificate frame ---- */
                         .shafa-cert-wrapper {
                             width: 297mm;
                             height: 210mm;
@@ -66,7 +65,7 @@
                             border: 1.5px solid #d5d5d5;
                         }
 
-                        /* ---- Absolute watermark SVG ---- */
+                        /* ---- Watermark SVG (absolutely positioned behind content) ---- */
                         .cert-watermarks {
                             position: absolute;
                             top: 0;
@@ -76,7 +75,7 @@
                             z-index: 0;
                         }
 
-                        /* ---- Main left content area ---- */
+                        /* ---- Main left content panel ---- */
                         .cert-main {
                             -webkit-box-flex: 1;
                             flex: 1;
@@ -107,7 +106,7 @@
                             margin-bottom: 10px;
                         }
 
-                        /* Platform name */
+                        /* "A.Y.M Shafa eLearning" */
                         .cert-platform {
                             font-size: 21pt;
                             font-weight: 300;
@@ -124,7 +123,7 @@
                             margin-bottom: 16px;
                         }
 
-                        /* Student name — largest text on the cert */
+                        /* Student name — most prominent text */
                         .cert-student {
                             font-size: 27pt;
                             font-weight: 700;
@@ -140,7 +139,7 @@
                             margin-bottom: 6px;
                         }
 
-                        /* Course / channel name */
+                        /* Certification / course name */
                         .cert-course {
                             font-size: 15pt;
                             font-weight: 700;
@@ -154,7 +153,7 @@
                             color: #555;
                         }
 
-                        /* ---- Signature block (pinned to bottom) ---- */
+                        /* ---- Signature block (stays at bottom) ---- */
                         .cert-sig {
                             padding-top: 8px;
                         }
@@ -166,7 +165,7 @@
                             margin-bottom: 5px;
                         }
 
-                        /* Italic serif — emulates a signature style */
+                        /* Italic serif emulates a handwritten signature */
                         .cert-sig-name {
                             font-size: 13pt;
                             font-style: italic;
@@ -201,7 +200,7 @@
                             flex-shrink: 0;
                         }
 
-                        /* "VERIFIED CERTIFICATE" */
+                        /* "VERIFIED CERTIFICATE" label */
                         .cert-badge {
                             text-align: center;
                             font-size: 13pt;
@@ -212,7 +211,7 @@
                             line-height: 1.55;
                         }
 
-                        /* Emblem SVG sizing */
+                        /* Shafa mandala emblem */
                         .cert-emblem {
                             width: 74px;
                             height: 74px;
@@ -222,7 +221,7 @@
 
                     <!-- ================================================
                          WATERMARK CIRCLES
-                         Hollow circles at low opacity form the background
+                         Hollow, low-opacity circles form the background
                          texture matching the original certificate design.
                     ================================================ -->
                     <svg class="cert-watermarks"
@@ -241,10 +240,9 @@
                          MAIN LEFT PANEL
                     ================================================ -->
                     <div class="cert-main">
-
                         <div class="cert-top">
 
-                            <!-- Company logo (pulled from Odoo company settings) -->
+                            <!-- Company logo from Odoo company settings -->
                             <t t-if="res_company.logo">
                                 <img class="cert-logo"
                                      t-att-src="'/web/image/res.company/%d/logo' % res_company.id"
@@ -256,18 +254,18 @@
 
                             <!-- Completion date -->
                             <div class="cert-date">
-                                <t t-if="completion_date">
-                                    <t t-esc="completion_date"/>
+                                <t t-if="input.create_date">
+                                    <t t-esc="input.create_date.strftime('%d/%m/%Y')"/>
                                 </t>
                                 <t t-else="">
                                     <t t-esc="time.strftime('%d/%m/%Y')"/>
                                 </t>
                             </div>
 
-                            <!-- Student name -->
+                            <!-- Student / participant name -->
                             <div class="cert-student">
-                                <t t-if="partner">
-                                    <t t-esc="partner.name"/>
+                                <t t-if="input.partner_id">
+                                    <t t-esc="input.partner_id.name"/>
                                 </t>
                                 <t t-else="">
                                     <t t-esc="user.partner_id.name"/>
@@ -276,9 +274,9 @@
 
                             <div class="cert-completed">has successfully completed</div>
 
-                            <!-- Course name -->
+                            <!-- Certification / survey title -->
                             <div class="cert-course">
-                                <t t-esc="channel.name"/>
+                                <t t-esc="input.survey_id.title"/>
                             </div>
 
                             <div class="cert-authorised">
@@ -287,7 +285,7 @@
 
                         </div>
 
-                        <!-- Signature block at bottom of left panel -->
+                        <!-- Signature block pinned to the bottom of the left panel -->
                         <div class="cert-sig">
                             <div class="cert-sig-line"/>
                             <div class="cert-sig-name">Ali Ibrahim</div>
@@ -308,9 +306,8 @@
 
                         <!--
                             Shafa mandala / flower emblem.
-                            12 outer petals (orange) + 12 inner petals (deep red),
-                            offset by 15°, with a hollow grey centre.
-                            This approximates the circular Shafa logo mark.
+                            12 outer petals (orange #E85520) + 12 inner petals
+                            (deep red #C43A0F, offset 15°) + hollow grey centre.
                         -->
                         <svg class="cert-emblem"
                              xmlns="http://www.w3.org/2000/svg"
@@ -345,7 +342,7 @@
                                 <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(315)"/>
                                 <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(345)"/>
 
-                                <!-- Hollow centre matching the grey panel background -->
+                                <!-- Hollow centre matching the panel background -->
                                 <circle r="9" fill="#ebebeb"/>
 
                             </g>
