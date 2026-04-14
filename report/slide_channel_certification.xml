@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         PAPER FORMAT: A4 Landscape with zero margins
+         Matches the wide certificate layout in the design
+    ================================================================ -->
+    <record id="paperformat_shafa_certificate" model="report.paperformat">
+        <field name="name">Shafa Certificate (A4 Landscape)</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">0</field>
+        <field name="margin_bottom">0</field>
+        <field name="margin_left">0</field>
+        <field name="margin_right">0</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <!-- ================================================================
+         REPORT ACTION OVERRIDE: Apply landscape paper format
+         to the existing eLearning certificate report action
+    ================================================================ -->
+    <record id="slide.action_slide_channel_certification" model="ir.actions.report">
+        <field name="paperformat_id" ref="shafa_elearning_certificate.paperformat_shafa_certificate"/>
+    </record>
+
+    <!-- ================================================================
+         CERTIFICATE TEMPLATE OVERRIDE
+         Inherits slide.report_slide_channel_certification and
+         completely replaces the HTML body with the Shafa design.
+    ================================================================ -->
+    <template id="report_shafa_certificate_override"
+              inherit_id="slide.report_slide_channel_certification">
+
+        <xpath expr="//t[@t-call='web.html_container']" position="replace">
+
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="channel">
+
+                    <!--
+                        Attempt to find the channel-partner record for completion date.
+                        'partner' is provided by report.slide.slide_channel_certification
+                        as a separate template variable when the certificate is generated.
+                    -->
+                    <t t-set="channel_partner"
+                       t-value="channel.slide_partner_ids.filtered(lambda sp: sp.partner_id == partner)[:1] if partner else None"/>
+
+                    <div class="shafa-cert-wrapper">
+
+                        <!-- ============================================
+                             CSS STYLES
+                        ============================================ -->
+                        <style type="text/css">
+
+                            * {
+                                box-sizing: border-box;
+                                margin: 0;
+                                padding: 0;
+                            }
+
+                            @page {
+                                size: A4 landscape;
+                                margin: 0;
+                            }
+
+                            body {
+                                margin: 0;
+                                padding: 0;
+                                background: white;
+                            }
+
+                            /* ---- Outer page wrapper ---- */
+                            .shafa-cert-wrapper {
+                                width: 297mm;
+                                height: 210mm;
+                                display: flex;
+                                flex-direction: row;
+                                font-family: Arial, Helvetica, sans-serif;
+                                position: relative;
+                                overflow: hidden;
+                                background: #ffffff;
+                                border: 1.5px solid #d5d5d5;
+                            }
+
+                            /* ---- Watermark SVG overlay ---- */
+                            .cert-watermarks {
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 100%;
+                                height: 100%;
+                                z-index: 0;
+                                pointer-events: none;
+                            }
+
+                            /* ---- Main left content area (~77%) ---- */
+                            .cert-main {
+                                flex: 1;
+                                padding: 18mm 14mm 12mm 18mm;
+                                position: relative;
+                                z-index: 1;
+                                display: flex;
+                                flex-direction: column;
+                                justify-content: space-between;
+                            }
+
+                            .cert-top-section {
+                                display: flex;
+                                flex-direction: column;
+                            }
+
+                            /* Logo */
+                            .cert-logo {
+                                height: 48px;
+                                max-width: 150px;
+                                object-fit: contain;
+                                display: block;
+                                margin-bottom: 10px;
+                            }
+
+                            /* "A.Y.M Shafa eLearning" platform name */
+                            .cert-platform-name {
+                                font-size: 21pt;
+                                font-weight: 300;
+                                color: #222222;
+                                letter-spacing: -0.3px;
+                                margin-bottom: 6px;
+                                line-height: 1.2;
+                            }
+
+                            /* Completion date */
+                            .cert-date {
+                                font-size: 10.5pt;
+                                color: #555555;
+                                margin-bottom: 18px;
+                            }
+
+                            /* Student name */
+                            .cert-student-name {
+                                font-size: 26pt;
+                                font-weight: 700;
+                                color: #1a1a1a;
+                                margin-bottom: 7px;
+                                line-height: 1.1;
+                            }
+
+                            /* "has successfully completed" */
+                            .cert-text-completed {
+                                font-size: 10.5pt;
+                                color: #555555;
+                                margin-bottom: 7px;
+                            }
+
+                            /* Course name */
+                            .cert-course-name {
+                                font-size: 15pt;
+                                font-weight: 700;
+                                color: #1a1a1a;
+                                margin-bottom: 5px;
+                            }
+
+                            /* "an online course authorised by..." */
+                            .cert-text-authorised {
+                                font-size: 10pt;
+                                color: #555555;
+                            }
+
+                            /* ---- Signature block ---- */
+                            .cert-signature-block {
+                                margin-top: auto;
+                                padding-top: 10px;
+                            }
+
+                            /* Signature line */
+                            .cert-signature-line {
+                                width: 90px;
+                                border-bottom: 1.2px solid #888;
+                                margin-bottom: 4px;
+                            }
+
+                            .cert-signer-script {
+                                font-size: 14pt;
+                                font-style: italic;
+                                color: #2a2a2a;
+                                font-family: Georgia, 'Times New Roman', serif;
+                                font-weight: 600;
+                                margin-bottom: 2px;
+                                /* Emulates a handwritten / script style */
+                                letter-spacing: 0.5px;
+                            }
+
+                            .cert-signer-title {
+                                font-size: 9pt;
+                                color: #333333;
+                                line-height: 1.5;
+                            }
+
+                            /* ---- Right side panel (~23%) ---- */
+                            .cert-side-panel {
+                                width: 58mm;
+                                background-color: #ebebeb;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: space-between;
+                                padding: 14mm 7mm 14mm 7mm;
+                                position: relative;
+                                z-index: 1;
+                                flex-shrink: 0;
+                            }
+
+                            /* "VERIFIED CERTIFICATE" heading */
+                            .cert-verified-badge {
+                                text-align: center;
+                                font-size: 13pt;
+                                font-weight: 400;
+                                letter-spacing: 1.2px;
+                                color: #2a2a2a;
+                                text-transform: uppercase;
+                                line-height: 1.5;
+                            }
+
+                            /* Shafa emblem SVG container */
+                            .cert-emblem {
+                                width: 72px;
+                                height: 72px;
+                            }
+
+                        </style>
+
+                        <!-- ============================================
+                             WATERMARK CIRCLES (background layer)
+                             Subtle hollow circles scattered behind content
+                        ============================================ -->
+                        <svg class="cert-watermarks"
+                             xmlns="http://www.w3.org/2000/svg"
+                             viewBox="0 0 1122 794"
+                             preserveAspectRatio="xMidYMid slice">
+                            <!-- Large background circles -->
+                            <circle cx="185"  cy="185"  r="110" fill="none" stroke="#bbbbbb" stroke-width="28" opacity="0.35"/>
+                            <circle cx="530"  cy="310"  r="95"  fill="none" stroke="#bbbbbb" stroke-width="28" opacity="0.30"/>
+                            <circle cx="750"  cy="140"  r="85"  fill="none" stroke="#bbbbbb" stroke-width="28" opacity="0.30"/>
+                            <circle cx="175"  cy="610"  r="95"  fill="none" stroke="#bbbbbb" stroke-width="28" opacity="0.30"/>
+                            <circle cx="490"  cy="680"  r="75"  fill="none" stroke="#bbbbbb" stroke-width="28" opacity="0.25"/>
+                            <circle cx="700"  cy="590"  r="65"  fill="none" stroke="#bbbbbb" stroke-width="24" opacity="0.25"/>
+                        </svg>
+
+                        <!-- ============================================
+                             MAIN CONTENT (left panel)
+                        ============================================ -->
+                        <div class="cert-main">
+
+                            <div class="cert-top-section">
+
+                                <!-- Company Logo -->
+                                <t t-if="res_company.logo">
+                                    <img class="cert-logo"
+                                         t-att-src="'/web/image/res.company/%d/logo' % res_company.id"
+                                         alt="Logo"/>
+                                </t>
+
+                                <!-- Platform Name -->
+                                <div class="cert-platform-name">A.Y.M Shafa eLearning</div>
+
+                                <!-- Completion Date -->
+                                <div class="cert-date">
+                                    <!-- Use completion_date if provided by the report model,
+                                         otherwise fall back to today's date -->
+                                    <t t-if="completion_date">
+                                        <t t-esc="completion_date"/>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-esc="time.strftime('%d/%m/%Y')"/>
+                                    </t>
+                                </div>
+
+                                <!-- Student Name -->
+                                <div class="cert-student-name">
+                                    <t t-if="partner">
+                                        <t t-esc="partner.name"/>
+                                    </t>
+                                    <t t-else="">
+                                        <t t-esc="user.partner_id.name"/>
+                                    </t>
+                                </div>
+
+                                <!-- Body text -->
+                                <div class="cert-text-completed">has successfully completed</div>
+
+                                <!-- Course Name -->
+                                <div class="cert-course-name">
+                                    <t t-esc="channel.name"/>
+                                </div>
+
+                                <div class="cert-text-authorised">
+                                    an online course authorised by A.Y.M Shafa Limited
+                                </div>
+
+                            </div>
+
+                            <!-- Signature Block -->
+                            <div class="cert-signature-block">
+                                <div class="cert-signature-line"></div>
+                                <div class="cert-signer-script">Ali Ibrahim</div>
+                                <div class="cert-signer-title">MD/COO</div>
+                                <div class="cert-signer-title">AYM Shafa Limited</div>
+                            </div>
+
+                        </div>
+
+                        <!-- ============================================
+                             RIGHT SIDE PANEL
+                             Grey band with "VERIFIED CERTIFICATE" and emblem
+                        ============================================ -->
+                        <div class="cert-side-panel">
+
+                            <div class="cert-verified-badge">
+                                VERIFIED<br/>CERTIFICATE
+                            </div>
+
+                            <!--
+                                Shafa flower / mandala emblem (SVG recreation).
+                                12 outer petals + 12 inner petals in orange/red,
+                                approximating the Shafa logo mark.
+                            -->
+                            <svg class="cert-emblem"
+                                 viewBox="0 0 100 100"
+                                 xmlns="http://www.w3.org/2000/svg">
+                                <g transform="translate(50,50)">
+
+                                    <!-- Outer ring of petals (12 petals, orange) -->
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(0)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(30)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(60)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(90)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(120)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(150)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(180)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(210)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(240)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(270)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(300)"/>
+                                    <path d="M0,-44 C9,-33 9,-20 0,-14 C-9,-20 -9,-33 0,-44Z" fill="#E85520" transform="rotate(330)"/>
+
+                                    <!-- Inner ring of petals (12 petals, deeper red, rotated 15°) -->
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(15)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(45)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(75)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(105)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(135)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(165)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(195)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(225)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(255)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(285)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(315)"/>
+                                    <path d="M0,-26 C5,-19 5,-11 0,-8 C-5,-11 -5,-19 0,-26Z" fill="#C43A0F" transform="rotate(345)"/>
+
+                                    <!-- White hollow center -->
+                                    <circle r="9" fill="#ebebeb"/>
+
+                                </g>
+                            </svg>
+
+                        </div>
+
+                    </div><!-- end .shafa-cert-wrapper -->
+
+                </t><!-- end t-foreach -->
+            </t><!-- end web.html_container -->
+
+        </xpath>
+    </template>
+
+</odoo>
