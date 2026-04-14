@@ -2,29 +2,10 @@
 <odoo>
 
     <!-- ================================================================
-         PAPER FORMAT: A4 Landscape with zero margins
-         Matches the wide certificate layout in the design
+         NOTE: Page orientation (landscape) is controlled via CSS @page
+         rules inside the template below, which wkhtmltopdf respects
+         directly. No paper format record override is needed.
     ================================================================ -->
-    <record id="paperformat_shafa_certificate" model="report.paperformat">
-        <field name="name">Shafa Certificate (A4 Landscape)</field>
-        <field name="format">A4</field>
-        <field name="orientation">Landscape</field>
-        <field name="margin_top">0</field>
-        <field name="margin_bottom">0</field>
-        <field name="margin_left">0</field>
-        <field name="margin_right">0</field>
-        <field name="header_line" eval="False"/>
-        <field name="header_spacing">0</field>
-        <field name="dpi">96</field>
-    </record>
-
-    <!-- ================================================================
-         REPORT ACTION OVERRIDE: Apply landscape paper format
-         to the existing eLearning certificate report action
-    ================================================================ -->
-    <record id="slide.action_slide_channel_certification" model="ir.actions.report">
-        <field name="paperformat_id" ref="shafa_elearning_certificate.paperformat_shafa_certificate"/>
-    </record>
 
     <!-- ================================================================
          CERTIFICATE TEMPLATE OVERRIDE
@@ -61,8 +42,8 @@
                             }
 
                             @page {
-                                size: A4 landscape;
-                                margin: 0;
+                                size: 297mm 210mm;   /* A4 landscape explicit dimensions */
+                                margin: 0mm;
                             }
 
                             body {
